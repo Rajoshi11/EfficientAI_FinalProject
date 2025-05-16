@@ -145,7 +145,7 @@ FEDMLEffAI/
 
 ---
 
-## ⚖Results
+## Results
 
 ### Global Metrics (3 Clients)
 
@@ -193,7 +193,7 @@ SHAP Comparision - 5 Clients
 
 ---
 
-## 📌 System Architecture
+## System Architecture
 
 System Design
 
