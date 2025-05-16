@@ -1,31 +1,33 @@
-## Federated Explainable AI for Privacy-Preserving and Efficient Credit Risk Scoring
+# Federated Explainable AI for Privacy-Preserving and Efficient Credit Risk Scoring
+
+---
 
 ## Summary
 
-This project develops a **Federated Learning (FL)** pipeline with **Explainable AI (XAI)** enhancements for **credit risk scoring** — a critical use case in financial services. The system simulates multiple institutions (e.g., banks) collaboratively training machine learning models **without sharing sensitive customer data**, thus preserving privacy while enabling global learning.
+This project develops a **Federated Learning (FL)** pipeline augmented with **Explainable AI (XAI)** for **credit risk scoring** — a key real-world problem in the financial industry. The idea is to collaboratively train machine learning models **without sharing raw data**, thereby preserving privacy while enabling shared intelligence among simulated financial institutions (clients).
 
-We implement the project in two distinct phases:
-1. A **WebSocket-based simulated distributed setup** to validate communication and aggregation strategies.
-2. A **true federated setup using Flower**, extended with **SHAP (SHapley Additive exPlanations)** for global interpretability of model decisions.
+We explored this via two phases:
+
+1. **WebSocket-based distributed simulation** to test the communication logic, convergence, and centralized explainability.
+2. **Federated Learning with Flower** and **SHAP-based explainability**, simulating decentralized learning and privacy-preserving interpretation across clients.
 
 ---
 
 ## Objectives
 
-- Enable **privacy-preserving** credit risk prediction using FL.
-- Ensure **interpretability** through SHAP-based XAI methods.
-- Demonstrate **model efficiency** on decentralized systems.
-- Analyze trade-offs between **communication cost** and **explanation fidelity**.
+- Develop an **interpretable federated learning system** for credit risk classification.
+- Enable **privacy-preserving insights** via SHAP without leaking raw data or labels.
+- Evaluate performance trade-offs in **3-client vs. 5-client** setups.
+- Quantify the **impact of federated pruning** and **model compression** on explainability.
 
 ---
 
 ## Research Questions
 
-- How can SHAP be integrated into an FL setup without compromising privacy or interpretability?
-- Can lightweight MLP models trained locally retain meaningful SHAP-based explanations?
-- What impact do efficiency techniques (e.g., pruning, quantization) have on SHAP value distributions?
-- How does global aggregation of local SHAP explanations compare to centralized XAI?
-- Can consistent, high-fidelity explanations be produced from heterogeneous, non-IID client datasets?
+- How effective are SHAP explanations in a decentralized federated setup?
+- Can local SHAP values be aggregated without compromising privacy or fidelity?
+- How does the accuracy/interpretability vary across 3-client and 5-client non-IID splits?
+- What role does model compression (e.g., pruning) play in interpretability?
 
 ---
 
@@ -33,163 +35,224 @@ We implement the project in two distinct phases:
 ```
 FEDMLEffAI/
 │
-├── EffAI_FedML/ # Federated Learning with Flower + SHAP
+├── EffAI_FedML/ # 3-client Flower-based FL + SHAP
+│ ├── data/
+│ │ ├── client_0.csv
+│ │ ├── client_1.csv
+│ │ └── client_2.csv
 │ ├── client.py
 │ ├── server.py
-│ ├── encoder.pkl / scaler.pkl
-│ ├── fed_history.pkl
-│ ├── shap_values.pkl
 │ ├── plot_metrics.py
+│ ├── save_encoder_scaler.py
+│ ├── split_noniid.py
+│ ├── encoder.pkl / scaler.pkl
+│ ├── fed_history.pkl / shap_values.pkl
+│ ├── shap_client_0.json ... shap_client_2.json
 │ ├── shap_summary_plot.png
+│ ├── shap_comparison_clients.png
 │ ├── federated_metrics.png
+│ ├── global_metrics_over_rounds.csv
+│ └── federated_metrics_all.png
 
-├── EffAI_WebSockets/ # WebSocket-based simulated FL
+├── EffAI_FedML5/ # 5-client Flower-based FL + SHAP
+│ ├── data/
+│ │ ├── client_0.csv ... client_4.csv
 │ ├── client.py
 │ ├── server.py
-│ ├── model/
-│ │ └── keras_dnn.py
+│ ├── plot_metrics.py
+│ ├── save_encoder_scaler.py
+│ ├── split_noniid.py
+│ ├── shap_client_0.json ... shap_client_4.json
+│ ├── shap_summary_plot.png
+│ ├── shap_comparison_clients.png
+│ ├── global_metrics_over_rounds.csv
+│ ├── federated_metrics.png
+│ └── fed_history.pkl
+
+├── EffAI_WebSockets/ # WebSocket-based DNN FL prototype
+│ ├── client.py / server.py
 │ ├── data/
 │ │ └── credit_data.csv
-│ ├── data_loader.py
+│ ├── model/
+│ │ └── keras_dnn.py
+│ ├── plot_metrics.py
 │ ├── global_metrics.json
+│ ├── global_accuracy.png / global_loss.png
 
+├── README.md # This file
 ├── requirements.txt
-└── README.md
+└── .gitignore
 ```
 
 
 ---
 
-## Phase 1: WebSocket-Based Federated Simulation
+## Phase 1: WebSocket-Based FL Simulation
 
 ### Overview
-
-To simulate decentralized learning **without third-party frameworks**, we created a federated system using **Python TCP sockets**:
-
-- Each client trains a local model and sends its weights to the server.
-- The server performs **Federated Averaging (FedAvg)**.
-- Clients receive updated global weights and continue training.
+- Designed to test **FedAvg** strategy in a minimal setup.
+- Built using raw `socket` programming (TCP).
+- 3 clients trained on **non-IID partitions**.
 
 ### Flow
 
-1. Split data non-IID across clients using stratified sampling.
-2. Train lightweight MLPs locally (3-layer DNN).
-3. Send/receive model weights via sockets.
-4. Evaluate performance and save metrics to `global_metrics.json`.
+1. Load and split the South German Credit dataset.
+2. Each client trains a lightweight 3-layer DNN.
+3. Server performs weight aggregation.
+4. Results are plotted and saved locally.
 
-### Output
-
-- Federated accuracy/loss per round.
-- JSON-based logs for reproducibility.
-
----
-
-## Phase 2: Federated Learning with Flower + SHAP
+## Phase 2: Flower-Based Federated Learning with SHAP
 
 ### Tools
-- **[Flower](https://flower.dev/)** for federated coordination.
-- **TensorFlow** for local model training.
-- **SHAP** for post-hoc explanation.
-
-### Key Steps
-
-- Clients simulate separate banks with their own local datasets.
-- Server orchestrates rounds using **FedAvg** strategy.
-- Post-training, SHAP values are computed on the **global model** to derive insights.
-- Visualizations show global feature importance.
-
-### SHAP Workflow
-
-1. Combine client data for explainability.
-2. Use `shap.Explainer` on the server.
-3. Generate:
-   - `shap_summary_plot.png`
-   - `federated_metrics.png` (accuracy/loss over rounds)
+- `TensorFlow` + `Flower (flwr)`
+- `SHAP` for XAI
+- `matplotlib` + `pandas` for plots
+- 3-layer MLP (32-16-1) with sigmoid output
 
 ---
 
-## Dataset: South German Credit
+## Data Preprocessing
 
-- **Samples**: ~1000 records
-- **Features**: Categorical + numerical
-- **Target**: Binary classification (`good` or `bad` credit risk)
-- **Non-IID Split**: Clients receive imbalanced class distributions to simulate real-world decentralization.
+- Mapped `credit_risk` as binary: **good = 1**, **bad = 0**
+- Applied `OneHotEncoder` for categorical features
+- Applied `StandardScaler` to numerical features
+- Saved `encoder.pkl` and `scaler.pkl` for client-side use
+- Partitioned the dataset **non-IID** using criteria like:
+  - Age
+  - Credit duration
+  - Loan amount
+  - Installment rate
+  - Residence length
 
 ---
 
-## Results Snapshot
+## Model Architecture
 
-| Round | Train Acc | Val Acc | Val Loss |
-|-------|-----------|---------|----------|
-| 1     | 0.71      | 0.68    | 0.55     |
-| 5     | 0.86      | 0.88    | 0.27     |
-| 9     | 0.92      | 0.89    | 0.24     |
+- Lightweight MLP for **edge efficiency**
+- Layer config: `[Dense(32) → Dense(16) → Dense(1)]`
+- Activation: `ReLU` + `Sigmoid`
+- Loss: `Binary Crossentropy`
+- Optimizer: `Adam` (client), `SGD` (server)
 
-### SHAP Insights
+---
 
-Top features influencing credit risk predictions:
-- `amount`
-- `duration`
-- `checking_status`
-- `credit_history`
-- `purpose`
+## SHAP Explainability (Client + Server)
+
+- Used `shap.Explainer` on both local and global models
+- Shared only **mean SHAP vectors**, not raw features or weights
+- Visualized SHAP summaries and client-wise comparison
+- Verified interpretability retention post-pruning
+
+---
+
+## ⚖Results
+
+### Global Metrics (3 Clients)
+
+| Round | Accuracy | Loss  |
+|-------|----------|-------|
+| 1     | 0.75     | 0.498 |
+| 3     | 0.84     | 0.356 |
+| 5     | 0.88     | 0.274 |
+| 9     | 0.92     | 0.224 |
+
+Accuracy/Loss - 3 Clients
+
+![WhatsApp Image 2025-05-15 at 19 53 10_65a78aaa](https://github.com/user-attachments/assets/7e76d465-00d5-4f4b-a9b8-aab950b7b48a)
+
+SHAP Summary - 3 Clients
+
+![WhatsApp Image 2025-05-15 at 20 57 26_068d3f56](https://github.com/user-attachments/assets/71eb5a8a-b826-42ce-91b3-3e030cbe7a02)
+
+SHAP Comparision - 3 Clients
+
+![WhatsApp Image 2025-05-14 at 14 05 42_cbd97979](https://github.com/user-attachments/assets/1b7c1d45-5f94-4beb-a543-1bd2b9f6f874)
+
+---
+
+### 📈 Global Metrics (5 Clients)
+
+| Round | Accuracy | Loss  |
+|-------|----------|-------|
+| 1     | 0.69     | 0.581 |
+| 3     | 0.81     | 0.416 |
+| 5     | 0.88     | 0.297 |
+| 9     | 0.91     | 0.225 |
+
+Accuracy/Loss - 5 Clients
+
+![WhatsApp Image 2025-05-15 at 19 52 16_58fa1001](https://github.com/user-attachments/assets/b154a13c-5986-41fa-aa5d-9d057aa2ea8c)
+
+SHAP Summary - 5 clients
+
+![WhatsApp Image 2025-05-15 at 19 51 55_2135a0d6](https://github.com/user-attachments/assets/3444f864-771f-44b4-9632-ba2fd8dd2196)
+
+SHAP Comparision - 5 Clients
+
+![WhatsApp Image 2025-05-15 at 19 50 23_dee15a8b](https://github.com/user-attachments/assets/4368f69f-282c-4fd9-891e-294a0bed74cc)
+
+---
+
+## 📌 System Architecture
+
+System Design
+
+![eff](https://github.com/user-attachments/assets/67149b8e-3f3a-412c-af99-5d91abfd2d16)
 
 ---
 
 ## Team Responsibilities
 
-| Member           | Contribution |
-|------------------|--------------|
-| **Rujuta Joshi** | FL orchestration, SHAP pipeline, Flower integration |
-| **Greeshma Hedvikar** | Data preprocessing, local model training, performance analysis |
-| **Lavanya Deole** | SHAP value aggregation, explanation fidelity analysis, visualizations |
-| **Isha Harish** | Model pruning/quantization, communication efficiency evaluation |
-
-All members collaborated on documentation, testing, debugging, and final presentation preparation.
+| Member            | Role |
+|-------------------|------|
+| **Rujuta Joshi**  | FL orchestration, SHAP pipeline, client pruning |
+| **Greeshma Hedvikar** | Data processing, client-side training |
+| **Lavanya Deole** | SHAP visualization, SHAP JSON extraction |
+| **Isha Harish**   | Quantization logic, analysis, model efficiency |
 
 ---
 
 ## How to Run
 
-### WebSocket Simulation (Prototype)
+### WebSocket Prototype
 
-**Server (Terminal 1):**
 ```bash
 cd EffAI_WebSockets
-python server.py
-```
-**Clients (Terminal 2–4):**
-```bash
-cd EffAI_WebSockets
-python client.py 0
-python client.py 1
-python client.py 2
-```
-## Flower + SHAP (Final)
-**Server (Terminal 1):**
-```bash
-cd EffAI_FedML
-python server.py
-```
-**Clients (Terminal 2–4):**
-```bash
-cd EffAI_FedML
-python client.py 0
+python server.py            # Terminal 1
+python client.py 0          # Terminal 2
 python client.py 1
 python client.py 2
 ```
 
-Generate Plots:
+### Flower-Based Federated Learning (3 Clients)
 ```bash
+cd EffAI_FedML
+python server.py
+python client.py 0
+python client.py 1
+python client.py 2
 python plot_metrics.py
 ```
 
-## Future Work:
+### Flower-Based Federated Learning (5 Clients)
+```bash
+cd EffAI_FedML5
+python server.py
+python client.py 0
+python client.py 1
+python client.py 2
+python client.py 3
+python client.py 4
+python plot_metrics.py
+```
 
-Streamlit dashboard for visualizing client performance and SHAP insights.
+## Future Work
 
-Integration of fairness/bias metrics.
+Fairness and bias detection in explanations
 
-Compare with centralized model explainability.
+Streamlit dashboard for live FL monitoring
 
-Add support for LoRA, knowledge distillation, or edge deployment.
+Edge-device deployment (Jetson Nano, RPi)
+
+Fine-tuning with LoRA / QLoRA or distillation
+
